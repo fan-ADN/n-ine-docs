@@ -60,7 +60,7 @@ paths:
                   limit:
                     type: integer
                     description: リクエストで指定された1ページあたりの取得件数。
-                    example: 10
+                    example: 100
                   offset:
                     type: integer
                     description: リクエストで指定された取得開始位置。
@@ -150,7 +150,7 @@ paths:
                   limit:
                     type: integer
                     description: リクエストで指定された1ページあたりの取得件数。
-                    example: 10
+                    example: 100
                   offset:
                     type: integer
                     description: リクエストで指定された取得開始位置。
