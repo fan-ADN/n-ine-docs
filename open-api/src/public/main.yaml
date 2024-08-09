@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.1
+  version: 1.0.2
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -11,6 +11,23 @@ paths:
       summary: 全てのタグ情報を取得
       description: 全てのタグ情報を取得します。
       operationId: getAllTags
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            description: 1ページあたりの取得件数。デフォルトは100件。
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。
       responses:
         '200':
           description: 成功した操作
@@ -37,6 +54,17 @@ paths:
                           type: string
                           description: タグの名前
                     description: 全てのタグのリスト
+                  totalCount:
+                    type: integer
+                    description: 取得可能なタグの総数。
+                  limit:
+                    type: integer
+                    description: リクエストで指定された1ページあたりの取得件数。
+                    example: 10
+                  offset:
+                    type: integer
+                    description: リクエストで指定された取得開始位置。
+                    example: 0
         '401':
           description: 認証エラー
           content:
@@ -71,6 +99,22 @@ paths:
           schema:
             type: string
           description: タグ情報を取得する対象のLINEユーザーID。
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            description: 1ページあたりの取得件数。デフォルトは10件。
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。
       responses:
         '200':
           description: 成功した操作
@@ -100,6 +144,17 @@ paths:
                           type: string
                           description: タグの名前
                     description: 指定されたLINEユーザーに紐づくタグのリスト
+                  totalCount:
+                    type: integer
+                    description: 取得可能なタグの総数。
+                  limit:
+                    type: integer
+                    description: リクエストで指定された1ページあたりの取得件数。
+                    example: 10
+                  offset:
+                    type: integer
+                    description: リクエストで指定された取得開始位置。
+                    example: 0
         '401':
           description: 認証エラー
           content:
