@@ -106,7 +106,7 @@ paths:
             type: integer
             default: 100
             minimum: 1
-            description: 1ページあたりの取得件数。デフォルトは10件。
+            description: 1ページあたりの取得件数。デフォルトは100件。
         - name: offset
           in: query
           required: false
