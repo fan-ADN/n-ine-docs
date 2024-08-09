@@ -6,6 +6,59 @@ info:
 servers:
   - url: https://api.app.n-ine.com/v1
 paths:
+  /tags:
+    get:
+      summary: 全てのタグ情報を取得
+      description: 全てのタグ情報を取得します。
+      operationId: getAllTags
+      responses:
+        '200':
+          description: 成功した操作
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: タグのID
+                        crmAccountId:
+                          type: string
+                          description: タグが属するCRMアカウントのID
+                        name:
+                          type: string
+                          description: タグの名前
+                    description: 全てのタグのリスト
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+      security:
+        - ApiKeyAuth: []
+
   /line-user-tags/{lineUserId}:
     get:
       summary: LINEユーザーに紐づくタグ情報を取得
@@ -40,6 +93,9 @@ paths:
                         id:
                           type: string
                           description: タグのID
+                        crmAccountId:
+                          type: string
+                          description: タグが属するCRMアカウントのID
                         name:
                           type: string
                           description: タグの名前
