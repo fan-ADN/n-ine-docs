@@ -57,6 +57,7 @@ paths:
                   totalCount:
                     type: integer
                     description: 取得可能なタグの総数。
+                    example: 100
                   limit:
                     type: integer
                     description: リクエストで指定された1ページあたりの取得件数。
@@ -147,6 +148,7 @@ paths:
                   totalCount:
                     type: integer
                     description: 取得可能なタグの総数。
+                    example: 100
                   limit:
                     type: integer
                     description: リクエストで指定された1ページあたりの取得件数。
