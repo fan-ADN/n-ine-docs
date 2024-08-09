@@ -6,6 +6,66 @@ info:
 servers:
   - url: https://api.app.n-ine.com/v1
 paths:
+  /line-user-tags/{lineUserId}:
+    get:
+      summary: LINEユーザーに紐づくタグ情報を取得
+      description: 指定したLINEユーザーIDに紐づくタグ情報を取得します。
+      operationId: getLineUserTags
+      parameters:
+        - name: lineUserId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: タグ情報を取得する対象のLINEユーザーID。
+      responses:
+        '200':
+          description: 成功した操作
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  lineUserId:
+                    type: string
+                    description: タグ情報を取得したLINEユーザーのID
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: タグのID
+                        name:
+                          type: string
+                          description: タグの名前
+                    description: 指定されたLINEユーザーに紐づくタグのリスト
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+      security:
+        - ApiKeyAuth: []
+
   /line-user-tags:
     post:
       summary: LINEユーザーにタグを付与
