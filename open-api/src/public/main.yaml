@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.0
+  version: 1.0.1
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
