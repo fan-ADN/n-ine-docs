@@ -254,6 +254,80 @@ paths:
                     example: 401
       security:
         - ApiKeyAuth: []
+    delete:
+      summary: LINEユーザーからタグを削除
+      description: LINEユーザーに付与されているタグを削除します。
+      operationId: deleteLineUserTags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lineUserId:
+                  type: string
+                  description: タグを削除するLINEユーザーのID。
+                tagIds:
+                  type: array
+                  items:
+                    type: string
+                  description: LINEユーザーから削除するタグIDのリスト。最大100件まで指定可能。
+                  maxItems: 100
+              required:
+                - lineUserId
+                - tagIds
+      responses:
+        '200':
+          description: 成功した操作
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: 不正なリクエスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "Invalid request body"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+      security:
+        - ApiKeyAuth: []
 
 components:
   securitySchemes:
