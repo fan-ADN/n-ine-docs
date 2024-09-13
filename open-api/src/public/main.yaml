@@ -202,8 +202,8 @@ paths:
                   items:
                     type: string
                   minItems: 1
-                  maxItems: 100
-                  description: タグを付与するLINEユーザーのIDのリスト。最大100件まで指定可能。
+                  maxItems: 10
+                  description: タグを付与するLINEユーザーのIDのリスト。最大10件まで指定可能。
                 tagIds:
                   type: array
                   items:
@@ -289,8 +289,8 @@ paths:
                   items:
                     type: string
                   minItems: 1
-                  maxItems: 100
-                  description: タグを付与するLINEユーザーのIDのリスト。最大100件まで指定可能。
+                  maxItems: 10
+                  description: タグを付与するLINEユーザーのIDのリスト。最大10件まで指定可能。
                 tagIds:
                   type: array
                   items:
