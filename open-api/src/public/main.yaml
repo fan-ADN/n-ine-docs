@@ -193,16 +193,29 @@ paths:
               properties:
                 lineUserId:
                   type: string
-                  description: タグを付与するLINEユーザーのID。
+                  description: |
+                    タグを削除するLINEユーザーのID。
+
+                    ※lineUserIdまたはlineUserIdsのいずれか必須
+                lineUserIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 100
+                  description: タグを付与するLINEユーザーのIDのリスト。最大100件まで指定可能。
                 tagIds:
                   type: array
                   items:
                     type: string
-                  description: LINEユーザーに付与するタグIDのリスト。最大100件まで指定可能。
+                  minItems: 1
                   maxItems: 100
+                  description: LINEユーザーに付与するタグIDのリスト。最大100件まで指定可能。
               required:
-                - lineUserId
                 - tagIds
+              example:
+                lineUserId: "U1234567890abcdef1234567890abcdef"
+                tagIds: ["01J7MMT6VRNWSP1F9VTARXW4GF", "01J7MMWJZXEA0HTZDN9DAZY4BZ"]
       responses:
         '200':
           description: 成功した操作
@@ -267,16 +280,29 @@ paths:
               properties:
                 lineUserId:
                   type: string
-                  description: タグを削除するLINEユーザーのID。
+                  description: |
+                    タグを削除するLINEユーザーのID。
+
+                    ※lineUserIdまたはlineUserIdsのいずれか必須
+                lineUserIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 100
+                  description: タグを付与するLINEユーザーのIDのリスト。最大100件まで指定可能。
                 tagIds:
                   type: array
                   items:
                     type: string
-                  description: LINEユーザーから削除するタグIDのリスト。最大100件まで指定可能。
+                  minItems: 1
                   maxItems: 100
+                  description: LINEユーザーから削除するタグIDのリスト。最大100件まで指定可能。
               required:
-                - lineUserId
                 - tagIds
+              example:
+                lineUserId: "U1234567890abcdef1234567890abcdef"
+                tagIds: ["01J7MMT6VRNWSP1F9VTARXW4GF", "01J7MMWJZXEA0HTZDN9DAZY4BZ"]
       responses:
         '200':
           description: 成功した操作
