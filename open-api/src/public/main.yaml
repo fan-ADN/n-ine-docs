@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.4
+  version: 1.0.5
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -290,7 +290,7 @@ paths:
                     type: string
                   minItems: 1
                   maxItems: 100
-                  description: タグを付与するLINEユーザーのIDのリスト。最大100件まで指定可能。
+                  description: タグを削除するLINEユーザーのIDのリスト。最大100件まで指定可能。
                 tagIds:
                   type: array
                   items:
