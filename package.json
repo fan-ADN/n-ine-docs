@@ -1,0 +1,11 @@
+{
+  "name": "n-ine-docs",
+  "version": "1.0.0",
+  "description": "N-INE API Documentation",
+  "scripts": {
+    "build": "redocly build-docs open-api/src/public/main.yaml -o open-api/dst/public/index.html"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.25.13"
+  }
+}
