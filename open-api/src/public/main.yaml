@@ -6,6 +6,478 @@ info:
 servers:
   - url: https://api.app.n-ine.com/v1
 paths:
+  /calendar-events:
+    post:
+      summary: カレンダーイベントを作成
+      description: |
+        カレンダーイベントを作成します。
+
+        **終日イベントの場合の注意点:**
+        - `isAllDay: true`の場合、`startAt`の時刻部分は自動的に00:00:00 UTCに正規化されます
+        - `endAt`は無視され、常にnullとして保存されます
+      operationId: createCalendarEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - miniappId
+                - genreId
+                - title
+                - visibleFrom
+                - isAllDay
+                - startAt
+              properties:
+                miniappId:
+                  type: string
+                  description: ミニアプリID
+                  example: "01HQZX1234567890ABCDEFGHIJ"
+                genreId:
+                  type: string
+                  description: ジャンルID
+                  example: "01HQZY1234567890ABCDEFGHIJ"
+                title:
+                  type: string
+                  description: イベントタイトル
+                  example: "重要なイベント"
+                url:
+                  type: string
+                  nullable: true
+                  description: イベントURL
+                  example: "https://example.com/event"
+                visibleFrom:
+                  type: string
+                  format: date-time
+                  description: 表示開始日時（ISO 8601形式）
+                  example: "2025-12-01T00:00:00Z"
+                isAllDay:
+                  type: boolean
+                  description: 終日イベントかどうか
+                  example: false
+                startAt:
+                  type: string
+                  format: date-time
+                  description: |
+                    イベント開始日時（ISO 8601形式）
+                    終日イベントの場合、時刻部分は自動的に00:00:00 UTCに正規化されます
+                  example: "2025-12-25T10:00:00Z"
+                endAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: |
+                    イベント終了日時（ISO 8601形式）
+                    終日イベントの場合、この値は無視され、常にnullとして保存されます
+                  example: "2025-12-25T12:00:00Z"
+            examples:
+              normalEvent:
+                summary: 通常のイベント
+                value:
+                  miniappId: "01HQZX1234567890ABCDEFGHIJ"
+                  genreId: "01HQZY1234567890ABCDEFGHIJ"
+                  title: "重要なイベント"
+                  url: "https://example.com/event"
+                  visibleFrom: "2025-12-01T00:00:00Z"
+                  isAllDay: false
+                  startAt: "2025-12-25T10:00:00Z"
+                  endAt: "2025-12-25T12:00:00Z"
+              allDayEvent:
+                summary: 終日イベント
+                value:
+                  miniappId: "01HQZX1234567890ABCDEFGHIJ"
+                  genreId: "01HQZY1234567890ABCDEFGHIJ"
+                  title: "終日イベント"
+                  visibleFrom: "2025-12-01T00:00:00Z"
+                  isAllDay: true
+                  startAt: "2025-12-25T14:30:00Z"
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  calendarEvent:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "01HQZZ1234567890ABCDEFGHIJ"
+                      miniappId:
+                        type: string
+                        example: "01HQZX1234567890ABCDEFGHIJ"
+                      genreId:
+                        type: string
+                        example: "01HQZY1234567890ABCDEFGHIJ"
+                      title:
+                        type: string
+                        example: "重要なイベント"
+                      url:
+                        type: string
+                        nullable: true
+                        example: "https://example.com/event"
+                      visibleFrom:
+                        type: string
+                        format: date-time
+                        example: "2025-12-01T00:00:00.000Z"
+                      isAllDay:
+                        type: boolean
+                        example: false
+                      startAt:
+                        type: string
+                        format: date-time
+                        example: "2025-12-25T10:00:00.000Z"
+                      endAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: "2025-12-25T12:00:00.000Z"
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: "2025-11-30T05:30:00.000Z"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2025-11-30T05:30:00.000Z"
+        '400':
+          description: 不正なリクエスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "Invalid request body"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+        '404':
+          description: リソースが見つからない
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Not Found"
+                  message:
+                    type: string
+                    example: "Miniapp not found or you do not have permission to access it"
+                  statusCode:
+                    type: integer
+                    example: 404
+      security:
+        - ApiKeyAuth: []
+
+  /multicasts:
+    post:
+      summary: マルチキャスト配信を作成
+      description: |
+        LINEマルチキャスト配信を作成します。
+
+        **重要な制限事項:**
+        - LINE Messaging API制限により、1回のリクエストで最大5件のメッセージまで送信可能です
+        - ブロードキャスト配信でない場合、`targetingSettings`は必須です
+        - `targetingSettings.includeTargetType`が`TAGS`の場合、`includeTagIds`は必須です
+      operationId: createMulticast
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - crmAccountId
+                - isBroadcast
+                - messages
+              properties:
+                crmAccountId:
+                  type: string
+                  description: CRMアカウントID
+                  example: "01HQZW1234567890ABCDEFGHIJ"
+                isBroadcast:
+                  type: boolean
+                  description: ブロードキャスト配信かどうか
+                  example: true
+                scheduledAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: 配信予約日時（ISO 8601形式）
+                  example: "2025-12-26T12:00:00Z"
+                customAggregationUnit:
+                  type: string
+                  nullable: true
+                  description: カスタム集計単位
+                  example: "campaign-2025-12"
+                targetingSettings:
+                  type: object
+                  nullable: true
+                  description: ブロードキャスト配信でない場合は必須
+                  required:
+                    - includeTargetType
+                    - includeTagConditionType
+                    - excludeTagConditionType
+                  properties:
+                    includeTargetType:
+                      type: string
+                      enum: [TAGS, ALL_FRIENDS]
+                      description: 配信対象タイプ
+                      example: "TAGS"
+                    includeTagConditionType:
+                      type: string
+                      enum: [AND, OR]
+                      description: タグ絞り込み条件の論理演算子
+                      example: "AND"
+                    excludeTagConditionType:
+                      type: string
+                      enum: [AND, OR]
+                      description: タグ除外条件の論理演算子
+                      example: "OR"
+                includeTagIds:
+                  type: array
+                  items:
+                    type: string
+                  description: 配信対象タグID（includeTargetType='TAGS'の場合は必須）
+                  example: ["01HQZT1234567890ABCDEFGHIJ", "01HQZU1234567890ABCDEFGHIJ"]
+                excludeTagIds:
+                  type: array
+                  items:
+                    type: string
+                  description: 除外対象タグID
+                  example: ["01HQZV1234567890ABCDEFGHIJ"]
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  description: 配信するメッセージ（最低1件、最大5件）
+                  items:
+                    type: object
+                    required:
+                      - messageType
+                      - messageJson
+                    properties:
+                      messageType:
+                        type: string
+                        enum: [TEXT, STICKER, IMAGE, VIDEO, AUDIO, FILE, LOCATION, IMAGEMAP, TEMPLATE, FLEX]
+                        description: メッセージタイプ
+                        example: "TEXT"
+                      messageJson:
+                        type: object
+                        description: LINE Messaging APIのメッセージオブジェクト
+                        example:
+                          type: "text"
+                          text: "こんにちは！"
+            examples:
+              broadcastMessage:
+                summary: ブロードキャスト配信
+                value:
+                  crmAccountId: "01HQZW1234567890ABCDEFGHIJ"
+                  isBroadcast: true
+                  messages:
+                    - messageType: "TEXT"
+                      messageJson:
+                        type: "text"
+                        text: "こんにちは！これはブロードキャストメッセージです。"
+              tagTargetedMessage:
+                summary: タグによる絞り込み配信（予約配信）
+                value:
+                  crmAccountId: "01HQZW1234567890ABCDEFGHIJ"
+                  isBroadcast: false
+                  scheduledAt: "2025-12-26T12:00:00Z"
+                  targetingSettings:
+                    includeTargetType: "TAGS"
+                    includeTagConditionType: "AND"
+                    excludeTagConditionType: "OR"
+                  includeTagIds: ["01HQZT1234567890ABCDEFGHIJ", "01HQZU1234567890ABCDEFGHIJ"]
+                  excludeTagIds: ["01HQZV1234567890ABCDEFGHIJ"]
+                  customAggregationUnit: "campaign-2025-12"
+                  messages:
+                    - messageType: "TEXT"
+                      messageJson:
+                        type: "text"
+                        text: "特別なお知らせです！"
+                    - messageType: "IMAGE"
+                      messageJson:
+                        type: "image"
+                        originalContentUrl: "https://example.com/image.jpg"
+                        previewImageUrl: "https://example.com/preview.jpg"
+              flexMessage:
+                summary: Flexメッセージの配信
+                value:
+                  crmAccountId: "01HQZW1234567890ABCDEFGHIJ"
+                  isBroadcast: true
+                  messages:
+                    - messageType: "FLEX"
+                      messageJson:
+                        type: "flex"
+                        altText: "新商品のご案内"
+                        contents:
+                          type: "bubble"
+                          body:
+                            type: "box"
+                            layout: "vertical"
+                            contents:
+                              - type: "text"
+                                text: "新商品"
+                                weight: "bold"
+                                size: "xl"
+                              - type: "text"
+                                text: "期間限定販売中！"
+                                size: "sm"
+                                color: "#999999"
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  multicast:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "01HR001234567890ABCDEFGHIJ"
+                      crmAccountId:
+                        type: string
+                        example: "01HQZW1234567890ABCDEFGHIJ"
+                      status:
+                        type: string
+                        enum: [PENDING, CALCULATING, UNCONFIRMED, SCHEDULED, WAITING, SENDING, COMPLETED, CANCELED, FAILED]
+                        description: |
+                          配信ステータス:
+                          - PENDING: 配信待ち（作成直後）
+                          - CALCULATING: 配信対象者を計算中
+                          - UNCONFIRMED: 配信対象者の確認待ち
+                          - SCHEDULED: 配信予約済み
+                          - WAITING: 配信開始待ち
+                          - SENDING: 配信中
+                          - COMPLETED: 配信完了
+                          - CANCELED: キャンセル済み
+                          - FAILED: 配信失敗
+                        example: "PENDING"
+                      isBroadcast:
+                        type: boolean
+                        example: false
+                      scheduledAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: "2025-12-26T12:00:00.000Z"
+                      customAggregationUnit:
+                        type: string
+                        nullable: true
+                        example: "campaign-2025-12"
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: "2025-12-26T05:30:00.000Z"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2025-12-26T05:30:00.000Z"
+        '400':
+          description: 不正なリクエスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "At least one message is required"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+        '404':
+          description: CRMアカウントが見つからない
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Not Found"
+                  message:
+                    type: string
+                    example: "CRM account not found or you do not have permission to access it"
+                  statusCode:
+                    type: integer
+                    example: 404
+      security:
+        - ApiKeyAuth: []
+
   /tags:
     get:
       summary: 全てのタグ情報を取得
