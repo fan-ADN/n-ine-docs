@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.5
+  version: 1.0.6
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -648,6 +648,149 @@ paths:
                   statusCode:
                     type: integer
                     example: 401
+      security:
+        - ApiKeyAuth: []
+
+  /genres/{miniappId}:
+    get:
+      summary: ミニアプリに紐づくジャンル一覧を取得
+      description: 指定したミニアプリIDに紐づくジャンルグループとジャンルの階層構造を取得します。
+      operationId: getGenres
+      parameters:
+        - name: miniappId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ジャンル情報を取得する対象のミニアプリID
+          example: "01HQZX1234567890ABCDEFGHIJ"
+      responses:
+        '200':
+          description: 成功した操作
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  genreGroups:
+                    type: array
+                    description: ジャンルグループとその配下のジャンルのリスト
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: ジャンルグループID
+                          example: "01HQZY1234567890ABCDEFGHIJ"
+                        miniappId:
+                          type: string
+                          description: ミニアプリID
+                          example: "01HQZX1234567890ABCDEFGHIJ"
+                        settingName:
+                          type: string
+                          description: ジャンルグループ設定名
+                          example: "カテゴリー"
+                        description:
+                          type: string
+                          nullable: true
+                          description: ジャンルグループの説明
+                          example: "メインカテゴリーの設定"
+                        order:
+                          type: integer
+                          description: 表示順序
+                          example: 1
+                        genres:
+                          type: array
+                          description: ジャンルグループに属するジャンルのリスト
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                description: ジャンルID
+                                example: "01HQZZ1234567890ABCDEFGHIJ"
+                              genreGroupId:
+                                type: string
+                                description: 親ジャンルグループID
+                                example: "01HQZY1234567890ABCDEFGHIJ"
+                              tagId:
+                                type: string
+                                nullable: true
+                                description: 紐づくタグID
+                                example: "01HR001234567890ABCDEFGHIJ"
+                              name:
+                                type: string
+                                description: ジャンル名
+                                example: "アクション"
+                              order:
+                                type: integer
+                                description: ジャンルグループ内での表示順序
+                                example: 1
+                              colorTheme:
+                                type: string
+                                nullable: true
+                                description: カラーテーマ
+                                example: "BLUE"
+        '400':
+          description: 不正なリクエスト
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "Invalid path parameters"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+        '404':
+          description: ミニアプリが見つからない
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Not Found"
+                  message:
+                    type: string
+                    example: "Miniapp not found or you do not have permission to access it"
+                  statusCode:
+                    type: integer
+                    example: 404
       security:
         - ApiKeyAuth: []
 
