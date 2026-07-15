@@ -979,12 +979,13 @@ paths:
         各リンクはトランザクションで作成され、デフォルトのリダイレクト条件（`priority=0`）も自動生成されます。
         リンクごとに独立して作成されるため、1件の失敗は他の件に影響しません（レスポンスに件別の成否が返ります）。
 
-        **一意ルール:**
-        - `clickTags`の`tagId`はリンク内で一意
-        - `redirectConditions`の`priority`はリンク内で一意（1以上・昇順に評価）
-        - `defaultParameters`の`sourceParameter`はリンク内で一意
-        - `redirectConditions.parameters`の`sourceParameter`は条件内で一意
-        - `redirectConditions.tags`の`tagId`は条件内で一意
+        **一意ルール（違反時は400で、`message`に重複箇所が返ります）:**
+        - `analyticsTags`: `eventName`と`tagId`の組み合わせは`analyticsTags`配列内で一意
+        - `clickTags`: `tagId`は`clickTags`配列内で一意
+        - `defaultParameters`: `sourceParameter`は`defaultParameters`配列内で一意
+        - `redirectConditions`: `priority`は`redirectConditions`配列内で一意（1以上・昇順に評価）
+        - `redirectConditions[].tags`: `tagId`は同一`redirectConditions`要素の`tags`配列内で一意（要素をまたぐ重複は可）
+        - `redirectConditions[].parameters`: `sourceParameter`は同一`redirectConditions`要素の`parameters`配列内で一意（要素をまたぐ重複は可）
       operationId: createTrackingLinks
       requestBody:
         required: true
@@ -1037,7 +1038,7 @@ paths:
                         description: LINEユーザーごとのコンバージョン数上限
                       analyticsTags:
                         type: array
-                        description: アナリティクスタグ
+                        description: アナリティクスタグ（`eventName`と`tagId`の組み合わせは`analyticsTags`配列内で一意）
                         items:
                           type: object
                           required:
@@ -1060,6 +1061,7 @@ paths:
                               description: タグID
                       clickTags:
                         type: array
+                        uniqueItems: true
                         description: クリック時に付与するタグ
                         items:
                           type: object
@@ -1068,7 +1070,7 @@ paths:
                           properties:
                             tagId:
                               type: string
-                              description: タグID（リンク内で一意）
+                              description: タグID（`clickTags`配列内で一意）
                       defaultParameters:
                         type: array
                         description: デフォルトのパラメータ引き継ぎ設定
@@ -1080,7 +1082,7 @@ paths:
                           properties:
                             sourceParameter:
                               type: string
-                              description: 引き継ぎ元パラメータ（リンク内で一意）
+                              description: 引き継ぎ元パラメータ（`defaultParameters`配列内で一意）
                             destinationParameter:
                               type: string
                               description: 遷移先URLに付与するクエリパラメータ名
@@ -1101,7 +1103,7 @@ paths:
                             priority:
                               type: integer
                               minimum: 1
-                              description: 評価優先度（1以上・リンク内で一意・昇順に評価）
+                              description: 評価優先度（1以上・`redirectConditions`配列内で一意・昇順に評価）
                             tagConditionType:
                               type: string
                               enum: [AND, OR]
@@ -1109,7 +1111,8 @@ paths:
                             tags:
                               type: array
                               minItems: 1
-                              description: 条件判定に使うタグ（1つ以上必須・条件内で一意）
+                              uniqueItems: true
+                              description: 条件判定に使うタグ（1つ以上必須・`tagId`は同一`redirectConditions`要素の`tags`配列内で一意）
                               items:
                                 type: object
                                 required:
@@ -1129,7 +1132,7 @@ paths:
                                 properties:
                                   sourceParameter:
                                     type: string
-                                    description: 引き継ぎ元パラメータ（条件内で一意）
+                                    description: 引き継ぎ元パラメータ（同一`redirectConditions`要素の`parameters`配列内で一意）
                                   destinationParameter:
                                     type: string
                                     description: 遷移先URLに付与するクエリパラメータ名
@@ -1202,7 +1205,7 @@ paths:
           description: |
             不正なリクエスト
 
-            一意ルール（clickTagsのtagId / redirectConditionsのpriority / sourceParameter / 条件内タグ）に違反した場合も400で、
+            一意ルール（エンドポイントdescription冒頭の一覧を参照）に違反した場合も400で、
             `message`に重複箇所（例: `links[0]: duplicate priority in redirectConditions: 1`）が返ります。
           content:
             application/json:
