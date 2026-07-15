@@ -999,6 +999,7 @@ paths:
               properties:
                 trackingAccountId:
                   type: string
+                  minLength: 1
                   description: 作成先のtrackingアカウントID（全リンク共通）
                   example: "01HQZX1234567890ABCDEFGHIJ"
                 links:
@@ -1013,10 +1014,12 @@ paths:
                     properties:
                       url:
                         type: string
+                        minLength: 1
                         description: 遷移先URL
                         example: "https://example.com/campaign-a"
                       description:
                         type: string
+                        minLength: 1
                         description: リンクの説明・表示名
                         example: "キャンペーンA"
                       isConversionEnabled:
@@ -1028,13 +1031,13 @@ paths:
                         default: false
                         description: "LINEアプリ内ブラウザで開くか（省略時: false）"
                       expirationTime:
-                        type: number
+                        type: integer
                         description: 有効期限
                       conversionLimit:
-                        type: number
+                        type: integer
                         description: コンバージョン数の上限
                       lineUserConversionLimit:
-                        type: number
+                        type: integer
                         description: LINEユーザーごとのコンバージョン数上限
                       analyticsTags:
                         type: array
@@ -1049,15 +1052,19 @@ paths:
                           properties:
                             eventName:
                               type: string
+                              minLength: 1
                               description: GA4イベント名
                             key:
                               type: string
+                              minLength: 1
                               description: カスタムプロパティのキー
                             value:
                               type: string
+                              minLength: 1
                               description: カスタムプロパティの値
                             tagId:
                               type: string
+                              minLength: 1
                               description: タグID
                       clickTags:
                         type: array
@@ -1070,6 +1077,7 @@ paths:
                           properties:
                             tagId:
                               type: string
+                              minLength: 1
                               description: タグID（`clickTags`配列内で一意）
                       defaultParameters:
                         type: array
@@ -1082,9 +1090,11 @@ paths:
                           properties:
                             sourceParameter:
                               type: string
+                              minLength: 1
                               description: 引き継ぎ元パラメータ（`defaultParameters`配列内で一意）
                             destinationParameter:
                               type: string
+                              minLength: 1
                               description: 遷移先URLに付与するクエリパラメータ名
                       redirectConditions:
                         type: array
@@ -1099,6 +1109,7 @@ paths:
                           properties:
                             destinationUrl:
                               type: string
+                              minLength: 1
                               description: 条件合致時の遷移先URL
                             priority:
                               type: integer
@@ -1120,6 +1131,7 @@ paths:
                                 properties:
                                   tagId:
                                     type: string
+                                    minLength: 1
                                     description: タグID
                             parameters:
                               type: array
@@ -1132,9 +1144,11 @@ paths:
                                 properties:
                                   sourceParameter:
                                     type: string
+                                    minLength: 1
                                     description: 引き継ぎ元パラメータ（同一`redirectConditions`要素の`parameters`配列内で一意）
                                   destinationParameter:
                                     type: string
+                                    minLength: 1
                                     description: 遷移先URLに付与するクエリパラメータ名
             examples:
               basicLinks:
