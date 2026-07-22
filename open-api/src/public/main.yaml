@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.6
+  version: 1.0.7
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -967,6 +967,315 @@ paths:
                   statusCode:
                     type: integer
                     example: 401
+      security:
+        - ApiKeyAuth: []
+
+  /tracking-links:
+    post:
+      summary: 計測リンクを一括作成
+      description: |
+        計測リンク（tracking links）を一括作成します（1リクエストあたり最大100件）。
+
+        各リンクはトランザクションで作成され、デフォルトのリダイレクト条件（`priority=0`）も自動生成されます。
+        リンクごとに独立して作成されるため、1件の失敗は他の件に影響しません（レスポンスに件別の成否が返ります）。
+
+        **一意ルール（違反時は400で、`message`に重複箇所が返ります）:**
+        - `analyticsTags`: `eventName`と`tagId`の組み合わせは`analyticsTags`配列内で一意
+        - `clickTags`: `tagId`は`clickTags`配列内で一意
+        - `defaultParameters`: `sourceParameter`は`defaultParameters`配列内で一意
+        - `redirectConditions`: `priority`は`redirectConditions`配列内で一意（1以上・昇順に評価）
+        - `redirectConditions[].tags`: `tagId`は同一`redirectConditions`要素の`tags`配列内で一意（要素をまたぐ重複は可）
+        - `redirectConditions[].parameters`: `sourceParameter`は同一`redirectConditions`要素の`parameters`配列内で一意（要素をまたぐ重複は可）
+      operationId: createTrackingLinks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trackingAccountId
+                - links
+              properties:
+                trackingAccountId:
+                  type: string
+                  minLength: 1
+                  description: 作成先のtrackingアカウントID（全リンク共通）
+                  example: "01HQZX1234567890ABCDEFGHIJ"
+                links:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  description: 作成するリンクの配列（1〜100件）
+                  items:
+                    type: object
+                    required:
+                      - url
+                    properties:
+                      url:
+                        type: string
+                        minLength: 1
+                        description: 遷移先URL
+                        example: "https://example.com/campaign-a"
+                      description:
+                        type: string
+                        minLength: 1
+                        description: リンクの説明・表示名
+                        example: "キャンペーンA"
+                      isConversionEnabled:
+                        type: boolean
+                        default: true
+                        description: "コンバージョン計測の有効化（省略時: true）"
+                      openInLineApp:
+                        type: boolean
+                        default: false
+                        description: "LINEアプリ内ブラウザで開くか（省略時: false）"
+                      expirationTime:
+                        type: integer
+                        description: CV有効期限（クリックからコンバージョンまでの有効秒数。クリックからこの秒数を超えたコンバージョンは計測されない）
+                      conversionLimit:
+                        type: integer
+                        description: コンバージョン数の上限
+                      lineUserConversionLimit:
+                        type: integer
+                        description: LINEユーザーごとのコンバージョン数上限
+                      analyticsTags:
+                        type: array
+                        description: アナリティクスタグ（`eventName`と`tagId`の組み合わせは`analyticsTags`配列内で一意）
+                        items:
+                          type: object
+                          required:
+                            - eventName
+                            - key
+                            - value
+                            - tagId
+                          properties:
+                            eventName:
+                              type: string
+                              minLength: 1
+                              description: GA4イベント名
+                            key:
+                              type: string
+                              minLength: 1
+                              description: カスタムプロパティのキー
+                            value:
+                              type: string
+                              minLength: 1
+                              description: カスタムプロパティの値
+                            tagId:
+                              type: string
+                              minLength: 1
+                              description: タグID
+                      clickTags:
+                        type: array
+                        uniqueItems: true
+                        description: クリック時に付与するタグ
+                        items:
+                          type: object
+                          required:
+                            - tagId
+                          properties:
+                            tagId:
+                              type: string
+                              minLength: 1
+                              description: タグID（`clickTags`配列内で一意）
+                      defaultParameters:
+                        type: array
+                        description: デフォルトのパラメータ引き継ぎ設定
+                        items:
+                          type: object
+                          required:
+                            - sourceParameter
+                            - destinationParameter
+                          properties:
+                            sourceParameter:
+                              type: string
+                              minLength: 1
+                              description: 引き継ぎ元パラメータ（`defaultParameters`配列内で一意）
+                            destinationParameter:
+                              type: string
+                              minLength: 1
+                              description: 遷移先URLに付与するクエリパラメータ名
+                      redirectConditions:
+                        type: array
+                        description: タグに応じた分岐リダイレクト条件
+                        items:
+                          type: object
+                          required:
+                            - destinationUrl
+                            - priority
+                            - tagConditionType
+                            - tags
+                          properties:
+                            destinationUrl:
+                              type: string
+                              minLength: 1
+                              description: 条件合致時の遷移先URL
+                            priority:
+                              type: integer
+                              minimum: 1
+                              description: 評価優先度（1以上・`redirectConditions`配列内で一意・昇順に評価）
+                            tagConditionType:
+                              type: string
+                              enum: [AND, OR]
+                              description: タグ条件の結合方法
+                            tags:
+                              type: array
+                              minItems: 1
+                              uniqueItems: true
+                              description: 条件判定に使うタグ（1つ以上必須・`tagId`は同一`redirectConditions`要素の`tags`配列内で一意）
+                              items:
+                                type: object
+                                required:
+                                  - tagId
+                                properties:
+                                  tagId:
+                                    type: string
+                                    minLength: 1
+                                    description: タグID
+                            parameters:
+                              type: array
+                              description: 条件合致時のパラメータ引き継ぎ設定
+                              items:
+                                type: object
+                                required:
+                                  - sourceParameter
+                                  - destinationParameter
+                                properties:
+                                  sourceParameter:
+                                    type: string
+                                    minLength: 1
+                                    description: 引き継ぎ元パラメータ（同一`redirectConditions`要素の`parameters`配列内で一意）
+                                  destinationParameter:
+                                    type: string
+                                    minLength: 1
+                                    description: 遷移先URLに付与するクエリパラメータ名
+            examples:
+              basicLinks:
+                summary: 計測リンクの一括作成
+                value:
+                  trackingAccountId: "01HQZX1234567890ABCDEFGHIJ"
+                  links:
+                    - url: "https://example.com/campaign-a"
+                      description: "キャンペーンA"
+                    - url: "https://example.com/campaign-b"
+                      description: "キャンペーンB"
+                      isConversionEnabled: false
+      responses:
+        '201':
+          description: |
+            作成成功
+
+            一部のリンクだけ失敗した場合もステータスは201で、該当要素が`"ok": false`（`error`にメッセージ）になります。
+            `failed`が1以上の場合は`results`を確認してください。
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: リクエストされたリンクの総数
+                        example: 2
+                      succeeded:
+                        type: integer
+                        description: 作成に成功した件数
+                        example: 2
+                      failed:
+                        type: integer
+                        description: 作成に失敗した件数
+                        example: 0
+                      results:
+                        type: array
+                        description: リンクごとの作成結果
+                        items:
+                          type: object
+                          properties:
+                            index:
+                              type: integer
+                              description: リクエストのlinks配列内のインデックス
+                              example: 0
+                            url:
+                              type: string
+                              example: "https://example.com/campaign-a"
+                            ok:
+                              type: boolean
+                              description: 作成に成功したかどうか
+                              example: true
+                            trackingLinkId:
+                              type: string
+                              description: 作成された計測リンクのID（成功時のみ）
+                              example: "01HR0A1234567890ABCDEFGHIJ"
+                            error:
+                              type: string
+                              description: エラーメッセージ（失敗時のみ）
+        '400':
+          description: |
+            不正なリクエスト
+
+            一意ルール（エンドポイントdescription冒頭の一覧を参照）に違反した場合も400で、
+            `message`に重複箇所（例: `links[0]: duplicate priority in redirectConditions: 1`）が返ります。
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "Invalid request body"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー（APIキーが未指定 / 無効）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+        '403':
+          description: APIキーに紐づかないtrackingAccountId / tagIdを指定
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Forbidden"
+                  message:
+                    type: string
+                    example: "Invalid trackingAccountId"
+                  statusCode:
+                    type: integer
+                    example: 403
       security:
         - ApiKeyAuth: []
 
