@@ -1417,10 +1417,12 @@ paths:
                               example: "01HR0A1234567890ABCDEFGHIJ"
                             trackingLinkUrl:
                               type: string
+                              nullable: true
                               description: |
                                 エンドユーザーに配布する計測リンクURL（成功時のみ）。
 
                                 リクエストで指定した`url`（遷移先URL）とは別物で、配布するのはこちらです。
+                                計測アカウントにLIFFアプリが存在しない場合のみ`null`になります（計測リンク自体は作成されます）。
                               example: "https://liff.line.me/1234567890-abcdefgh/link/01HR0A1234567890ABCDEFGHIJ"
                             error:
                               type: string
