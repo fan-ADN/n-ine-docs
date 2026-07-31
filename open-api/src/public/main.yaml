@@ -997,7 +997,8 @@ paths:
             type: integer
             default: 0
             minimum: 0
-            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。
+            maximum: 999999999
+            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。受理されるのは9桁までの非負整数で、範囲外は400になります。
         - name: limit
           in: query
           required: false
@@ -1115,8 +1116,11 @@ paths:
           description: |
             不正なリクエスト
 
-            `trackingAccountId`の欠落、`offset` / `limit`が数値でない場合に返ります。
-            `limit`が1〜100の範囲外の場合は`message`が`limit must be between 1 and 100`になります。
+            `trackingAccountId`の欠落、`offset` / `limit`が非負整数（最大9桁）でない場合に返ります。
+            数値以外・負の値・10桁以上の値はいずれもこれに該当し、`message`は`Invalid query parameters`になります。
+
+            `message`が`limit must be between 1 and 100`になるのは、`limit`が`0`または`101`〜`999999999`の場合です。
+            それ以外の範囲外の指定（例: `limit=-1`、`limit=1000000000`）は上記の`Invalid query parameters`になります。
           content:
             application/json:
               schema:
