@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.7
+  version: 1.0.8
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -971,6 +971,213 @@ paths:
         - ApiKeyAuth: []
 
   /tracking-links:
+    get:
+      summary: 計測リンクを一括取得
+      description: |
+        指定したtrackingアカウントの計測リンクを作成日時の降順（新しい順）で一括取得します。
+
+        削除済みの計測リンクは含まれません。
+        アナリティクスタグ・クリックタグ・リダイレクト条件などの付随設定は含まれません（リンク本体の項目のみ）。
+
+        全件取得するには、`totalCount`に達するまで`offset`を進めてください。
+      operationId: getTrackingLinks
+      parameters:
+        - name: trackingAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            description: 取得対象のtrackingアカウントID
+          example: "01HQZX1234567890ABCDEFGHIJ"
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            maximum: 999999999
+            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。受理されるのは9桁までの非負整数で、範囲外は400になります。
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 100
+            description: 1ページあたりの取得件数。デフォルトは100件、上限は100件。
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalCount:
+                        type: integer
+                        description: 条件に一致する計測リンクの総数（`offset` / `limit`適用前）
+                        example: 120
+                      limit:
+                        type: integer
+                        description: リクエストで指定された1ページあたりの取得件数
+                        example: 50
+                      offset:
+                        type: integer
+                        description: リクエストで指定された取得開始位置
+                        example: 0
+                      items:
+                        type: array
+                        description: 計測リンクのリスト（作成日時の降順）
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: 計測リンクのID
+                              example: "01HR0A1234567890ABCDEFGHIJ"
+                            trackingAccountId:
+                              type: string
+                              description: 計測リンクが属するtrackingアカウントのID
+                              example: "01HQZX1234567890ABCDEFGHIJ"
+                            trackingLinkUrl:
+                              type: string
+                              nullable: true
+                              description: |
+                                エンドユーザーに配布する計測リンクURL。
+
+                                遷移先URL（`url`）とは別物で、配布するのはこちらです。
+                                計測アカウントにLIFFアプリが存在しない場合のみ`null`になります。
+                              example: "https://liff.line.me/1234567890-abcdefgh/link/01HR0A1234567890ABCDEFGHIJ"
+                            url:
+                              type: string
+                              description: 遷移先URL
+                              example: "https://example.com/campaign-a"
+                            description:
+                              type: string
+                              nullable: true
+                              description: リンクの説明・表示名
+                              example: "キャンペーンA"
+                            isConversionEnabled:
+                              type: boolean
+                              description: コンバージョン計測が有効かどうか
+                              example: true
+                            openInLineApp:
+                              type: boolean
+                              description: LINEアプリ内ブラウザで開くかどうか
+                              example: false
+                            expirationTime:
+                              type: integer
+                              nullable: true
+                              description: CV有効期限（クリックからコンバージョンまでの有効秒数）
+                              example: null
+                            conversionLimit:
+                              type: integer
+                              nullable: true
+                              description: コンバージョン数の上限
+                              example: null
+                            lineUserConversionLimit:
+                              type: integer
+                              nullable: true
+                              description: LINEユーザーごとのコンバージョン数上限
+                              example: null
+                            isLineUidEnabled:
+                              type: boolean
+                              description: 遷移先URLへのLINE UID引き継ぎが有効かどうか
+                              example: false
+                            lineUidParameterName:
+                              type: string
+                              nullable: true
+                              description: LINE UIDを引き継ぐクエリパラメータ名
+                              example: null
+                            isA8Enabled:
+                              type: boolean
+                              description: A8連携が有効かどうか
+                              example: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: 作成日時（ISO 8601形式）
+                              example: "2026-07-30T10:00:00.000Z"
+                            updatedAt:
+                              type: string
+                              format: date-time
+                              description: 更新日時（ISO 8601形式）
+                              example: "2026-07-30T10:00:00.000Z"
+        '400':
+          description: |
+            不正なリクエスト
+
+            `trackingAccountId`の欠落、`offset` / `limit`が非負整数（最大9桁）でない場合に返ります。
+            数値以外・負の値・10桁以上の値はいずれもこれに該当し、`message`は`Invalid query parameters`になります。
+
+            `message`が`limit must be between 1 and 100`になるのは、`limit`が`0`または`101`〜`999999999`の場合です。
+            それ以外の範囲外の指定（例: `limit=-1`、`limit=1000000000`）は上記の`Invalid query parameters`になります。
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Bad Request"
+                  message:
+                    type: string
+                    example: "Invalid query parameters"
+                  statusCode:
+                    type: integer
+                    example: 400
+        '401':
+          description: 認証エラー（APIキーが未指定 / 無効）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Unauthorized"
+                  message:
+                    type: string
+                    example: "Invalid API Key"
+                  statusCode:
+                    type: integer
+                    example: 401
+        '403':
+          description: APIキーに紐づかないtrackingAccountIdを指定
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Forbidden"
+                  message:
+                    type: string
+                    example: "Invalid trackingAccountId"
+                  statusCode:
+                    type: integer
+                    example: 403
+      security:
+        - ApiKeyAuth: []
     post:
       summary: 計測リンクを一括作成
       description: |
@@ -1212,6 +1419,15 @@ paths:
                               type: string
                               description: 作成された計測リンクのID（成功時のみ）
                               example: "01HR0A1234567890ABCDEFGHIJ"
+                            trackingLinkUrl:
+                              type: string
+                              nullable: true
+                              description: |
+                                エンドユーザーに配布する計測リンクURL（成功時のみ）。
+
+                                リクエストで指定した`url`（遷移先URL）とは別物で、配布するのはこちらです。
+                                計測アカウントにLIFFアプリが存在しない場合のみ`null`になります（計測リンク自体は作成されます）。
+                              example: "https://liff.line.me/1234567890-abcdefgh/link/01HR0A1234567890ABCDEFGHIJ"
                             error:
                               type: string
                               description: エラーメッセージ（失敗時のみ）
