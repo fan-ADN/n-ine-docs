@@ -1513,7 +1513,9 @@ paths:
 components:
   responses:
     PayloadTooLarge:
-      description: リクエストボディが上限（40MB）を超えています
+      description: |
+        圧縮した（`Content-Encoding` 付きの）リクエストボディを展開すると上限（40MB）を超えます。
+        送信されるボディそのものが 32MiB を超える場合は、APIに届く前にホスティング基盤（Cloud Run）が拒否するため、この形式の本文は返りません
       content:
         application/json:
           schema:
