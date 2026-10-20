@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.9
+  version: 1.0.10
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -147,7 +147,8 @@ paths:
                         format: date-time
                         example: "2025-11-30T05:30:00.000Z"
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -165,6 +166,8 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           description: 認証エラー
           content:
@@ -421,7 +424,7 @@ paths:
                         example: "2025-12-26T05:30:00.000Z"
         '400':
           description: |
-            不正なリクエスト。LINE連携情報が未登録のCRMアカウントを指定した場合も、`message`が`LINE account configuration not found`の400を返します
+            不正なリクエスト。LINE連携情報が未登録のCRMアカウントを指定した場合も、`message`が`LINE account configuration not found`の400を返します。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -439,6 +442,8 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           description: 認証エラー
           content:
@@ -845,7 +850,8 @@ paths:
                     type: boolean
                     example: true
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -863,6 +869,8 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           description: 認証エラー
           content:
@@ -932,7 +940,8 @@ paths:
                     type: boolean
                     example: true
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -950,6 +959,8 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           description: 認証エラー
           content:
@@ -1435,7 +1446,7 @@ paths:
                               description: エラーメッセージ（失敗時のみ）
         '400':
           description: |
-            不正なリクエスト
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
 
             一意ルール（エンドポイントdescription冒頭の一覧を参照）に違反した場合も400で、
             `message`に重複箇所（例: `links[0]: duplicate priority in redirectConditions: 1`）が返ります。
@@ -1456,6 +1467,8 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '401':
           description: 認証エラー（APIキーが未指定 / 無効）
           content:
@@ -1498,6 +1511,26 @@ paths:
         - ApiKeyAuth: []
 
 components:
+  responses:
+    PayloadTooLarge:
+      description: リクエストボディが上限（40MB）を超えています
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "Payload Too Large"
+              message:
+                type: string
+                example: "Request body too large"
+              statusCode:
+                type: integer
+                example: 413
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
