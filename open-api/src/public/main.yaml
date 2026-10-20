@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.8
+  version: 1.0.9
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -216,6 +216,7 @@ paths:
         - LINE Messaging API制限により、1回のリクエストで最大5件のメッセージまで送信可能です
         - ブロードキャスト配信でない場合、`targetingSettings`は必須です
         - `targetingSettings.includeTargetType`が`TAGS`の場合、`includeTagIds`は必須です
+        - LINE連携情報（Messaging API・LINEログインのチャネル）が未登録のCRMアカウントは指定できません（400 `LINE account configuration not found`）
       operationId: createMulticast
       requestBody:
         required: true
@@ -419,7 +420,8 @@ paths:
                         format: date-time
                         example: "2025-12-26T05:30:00.000Z"
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。LINE連携情報が未登録のCRMアカウントを指定した場合も、`message`が`LINE account configuration not found`の400を返します
           content:
             application/json:
               schema:
