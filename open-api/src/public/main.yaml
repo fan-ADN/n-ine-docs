@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.9
+  version: 1.0.10
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -147,7 +147,8 @@ paths:
                         format: date-time
                         example: "2025-11-30T05:30:00.000Z"
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -165,6 +166,10 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: 認証エラー
           content:
@@ -421,7 +426,7 @@ paths:
                         example: "2025-12-26T05:30:00.000Z"
         '400':
           description: |
-            不正なリクエスト。LINE連携情報が未登録のCRMアカウントを指定した場合も、`message`が`LINE account configuration not found`の400を返します
+            不正なリクエスト。LINE連携情報が未登録のCRMアカウントを指定した場合も、`message`が`LINE account configuration not found`の400を返します。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -439,6 +444,10 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: 認証エラー
           content:
@@ -845,7 +854,8 @@ paths:
                     type: boolean
                     example: true
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -863,6 +873,10 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: 認証エラー
           content:
@@ -932,7 +946,8 @@ paths:
                     type: boolean
                     example: true
         '400':
-          description: 不正なリクエスト
+          description: |
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
           content:
             application/json:
               schema:
@@ -950,6 +965,10 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: 認証エラー
           content:
@@ -1435,7 +1454,7 @@ paths:
                               description: エラーメッセージ（失敗時のみ）
         '400':
           description: |
-            不正なリクエスト
+            不正なリクエスト。リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します
 
             一意ルール（エンドポイントdescription冒頭の一覧を参照）に違反した場合も400で、
             `message`に重複箇所（例: `links[0]: duplicate priority in redirectConditions: 1`）が返ります。
@@ -1456,6 +1475,10 @@ paths:
                   statusCode:
                     type: integer
                     example: 400
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: 認証エラー（APIキーが未指定 / 無効）
           content:
@@ -1498,6 +1521,50 @@ paths:
         - ApiKeyAuth: []
 
 components:
+  responses:
+    PayloadTooLarge:
+      description: |
+        圧縮した（`Content-Encoding` 付きの）リクエストボディを展開すると上限（40MB）を超えます。
+        対応する圧縮形式は `gzip` と `deflate` です（それ以外は415）。
+        送信されるボディそのものが 32MiB を超える場合は、APIに届く前にホスティング基盤（Cloud Run）が拒否するため、この形式の本文は返りません
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "Payload Too Large"
+              message:
+                type: string
+                example: "Request body too large"
+              statusCode:
+                type: integer
+                example: 413
+    UnsupportedMediaType:
+      description: |
+        リクエストボディの圧縮形式（`Content-Encoding`）または文字コード（`Content-Type` の `charset`）に対応していません。
+        圧縮形式は `gzip` と `deflate`、文字コードは `utf-` で始まるもの（UTF-8 など。省略時は UTF-8）に対応しています
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "Unsupported Media Type"
+              message:
+                type: string
+                example: "Unsupported Media Type"
+              statusCode:
+                type: integer
+                example: 415
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
