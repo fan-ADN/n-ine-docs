@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.10
+  version: 1.0.11
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -665,7 +665,14 @@ paths:
   /genres/{miniappId}:
     get:
       summary: ミニアプリに紐づくジャンル一覧を取得
-      description: 指定したミニアプリIDに紐づくジャンルグループとジャンルの階層構造を取得します。
+      description: |
+        指定したミニアプリIDに紐づくジャンルグループとジャンルの階層構造を取得します。
+        リマインダーの利用者で通知がONの人だけに配信する場合、既存ユーザーへの利用タグ補完が完了した後に、
+        POST /multicasts の includeTagIds に usageTagId、excludeTagIds に対象ジャンルの tagId（通知OFFタグ）を指定します。
+        targetingSettings は includeTargetType: TAGS、includeTagConditionType: AND、excludeTagConditionType: OR とします。
+        初期値ONの利用者も対象です。usageTagId が null の場合は配信せず、利用タグの設定と移行状況を担当者に確認してください。
+        利用タグを手動・一括・tag-line-user / delete-line-user-tags API で操作しないでください。
+        利用タグは絞り込み専用で、ステップ配信のTAG_ADDED起点やリッチメニュー条件には使用できません。
       operationId: getGenres
       parameters:
         - name: miniappId
@@ -682,10 +689,16 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [success, usageTagId, genreGroups]
                 properties:
                   success:
                     type: boolean
                     example: true
+                  usageTagId:
+                    type: string
+                    nullable: true
+                    description: リマインダーの利用タグID。未設定または有効な利用タグがない場合はnull。非nullでも既存ユーザーの補完完了は表しません。
+                    example: "01HQZUSER1234567890ABCDEFGH"
                   genreGroups:
                     type: array
                     description: ジャンルグループとその配下のジャンルのリスト
@@ -730,7 +743,7 @@ paths:
                               tagId:
                                 type: string
                                 nullable: true
-                                description: 紐づくタグID
+                                description: リマインダーの通知OFFタグID。配信時にexcludeTagIdsへ指定します。
                                 example: "01HR001234567890ABCDEFGHIJ"
                               name:
                                 type: string
