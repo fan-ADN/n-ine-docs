@@ -1662,6 +1662,7 @@ paths:
         - 応答設定（`messageGroups`）は1〜100個、1つの応答設定のメッセージはアンケートを含めて1〜5個、タグは最大50個です
         - タグはタグIDまたはタグ名で指定します。26文字の英数字はまずタグIDとして引き、見つからなければタグ名として引きます。それ以外の文字列はタグ名として引きます。存在しないタグは400になり、タグが自動作成されることはありません
         - 指定したCRMアカウントに属さないタグ・アンケート・ポストバック条件のIDは400になります
+        - メッセージ種別と中身の組み合わせが合わないものは400になります。`SURVEY`は`surveyId`だけを、それ以外は`messageJson`だけを指定し、`messageJson.type`を大文字にした値が`messageType`と一致する必要があります（例: `TEXT`には`type: "text"`）
         - `messageJson`はLINE Messaging APIのメッセージ形式チェックにかけ、受け付けられない形式は400になります
         - LINE連携情報（Messaging APIのチャネル）が未登録のCRMアカウントは指定できません（400 `LINE account configuration not found`）
 
@@ -2135,13 +2136,15 @@ components:
         messageType:
           type: string
           enum: [TEXT, STICKER, IMAGE, VIDEO, AUDIO, FILE, LOCATION, IMAGEMAP, TEMPLATE, FLEX, SURVEY]
-          description: メッセージタイプ。アンケートは`SURVEY`です
+          description: |
+            メッセージタイプ。アンケートは`SURVEY`です。
+            `SURVEY`以外は、`messageJson.type`を大文字にした値と一致させてください（例: `TEXT`には`type: "text"`、`FLEX`には`type: "flex"`）
           example: "TEXT"
         messageJson:
           type: object
           nullable: true
           description: |
-            LINE Messaging APIのメッセージオブジェクト。`SURVEY`以外で指定します。
+            LINE Messaging APIのメッセージオブジェクト。`SURVEY`以外では必須で、`SURVEY`では指定できません。
             画像・動画・音声などは、公開済みのファイルのURLを指定してください（このAPIでファイルはアップロードできません）。
             絵文字（`emojis`）は20個まで、`sender.name`は20文字までです
           example:
@@ -2150,7 +2153,7 @@ components:
         surveyId:
           type: string
           nullable: true
-          description: アンケートのID。`messageType`が`SURVEY`のときに指定します
+          description: アンケートのID。`messageType`が`SURVEY`のときは必須で、それ以外では指定できません
           example: null
     AutoResponse:
       type: object
