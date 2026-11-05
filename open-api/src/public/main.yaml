@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.11
+  version: 1.0.12
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -1550,6 +1550,366 @@ paths:
       security:
         - ApiKeyAuth: []
 
+  /auto-responses:
+    get:
+      summary: 応答メッセージを一覧取得
+      description: |
+        指定したCRMアカウントの応答メッセージをID（ULID）の昇順で一覧取得します。
+
+        削除済みの応答メッセージは含まれません。
+        応答設定（`messageGroups`）は含まれません。応答設定は詳細取得（`GET /auto-responses/{autoResponseId}`）で取得してください。
+
+        全件取得するには、`totalCount`に達するまで`offset`を進めてください。
+      operationId: getAutoResponses
+      parameters:
+        - name: crmAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            description: 取得対象のCRMアカウントID
+          example: "01HQZW1234567890ABCDEFGHIJ"
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            description: |
+              キーワードでの絞り込み。応答メッセージのキーワードのいずれかに、指定した文字列を含むものを返します（部分一致）。
+              英字の大文字・小文字と、全角・半角（スペースを含む）の違いは区別しません。
+          example: "営業時間"
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            maximum: 999999999
+            description: 取得開始位置。デフォルトは0（最初のアイテムから取得）。受理されるのは9桁までの非負整数で、範囲外は400になります。
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 100
+            description: 1ページあたりの取得件数。デフォルトは100件、上限は100件。
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalCount:
+                        type: integer
+                        description: 条件に一致する応答メッセージの総数（`offset` / `limit`適用前）
+                        example: 3
+                      limit:
+                        type: integer
+                        description: 1ページあたりの取得件数
+                        example: 100
+                      offset:
+                        type: integer
+                        description: 取得開始位置
+                        example: 0
+                      items:
+                        type: array
+                        description: 応答メッセージのリスト（IDの昇順）
+                        items:
+                          $ref: '#/components/schemas/AutoResponse'
+        '400':
+          description: |
+            不正なリクエスト
+
+            `crmAccountId`の欠落、空文字の`keyword`、`offset` / `limit`が非負整数（最大9桁）でない場合に返り、`message`は`Invalid query parameters`になります。
+
+            `message`が`limit must be between 1 and 100`になるのは、`limit`が`0`または`101`〜`999999999`の場合です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Bad Request"
+                message: "Invalid query parameters"
+                statusCode: 400
+        '401':
+          $ref: '#/components/responses/AutoResponseUnauthorized'
+        '403':
+          $ref: '#/components/responses/AutoResponseInvalidCrmAccount'
+      security:
+        - ApiKeyAuth: []
+    post:
+      summary: 応答メッセージを作成
+      description: |
+        応答メッセージを1件作成し、作成した応答メッセージのIDを返します。返ったIDはそのまま編集（`PATCH /auto-responses/{autoResponseId}`）に使えます。
+
+        **入力チェック（管理画面・CSV一括入稿と同じです）:**
+        - `trigger.keywords`と`trigger.lineUserPostbackActionTagRuleIds`の少なくとも一方に1件以上必要です
+        - キーワードは最大10個で、重複はできません
+        - 応答設定（`messageGroups`）は1〜100個、1つの応答設定のメッセージはアンケートを含めて1〜5個、タグは最大50個です
+        - タグはタグIDまたはタグ名で指定します。26文字の英数字はまずタグIDとして引き、見つからなければタグ名として引きます。それ以外の文字列はタグ名として引きます。存在しないタグは400になり、タグが自動作成されることはありません
+        - 指定したCRMアカウントに属さないタグ・アンケート・ポストバック条件のIDは400になります
+        - メッセージ種別と中身の組み合わせが合わないものは400になります。`SURVEY`は`surveyId`だけを、それ以外は`messageJson`だけを指定し、`messageJson.type`を大文字にした値が`messageType`と一致する必要があります（例: `TEXT`には`type: "text"`）
+        - `messageJson`はLINE Messaging APIのメッセージ形式チェックにかけ、受け付けられない形式は400になります
+        - LINE連携情報（Messaging APIのチャネル）が未登録のCRMアカウントは指定できません（400 `LINE account configuration not found`）
+
+        **再送について:**
+        このAPIは冪等ではありません。通信が途中で切れたリクエストを再送すると、同じ内容の応答メッセージが二重に作成されることがあります。再送する前に一覧取得で作成済みでないかを確認してください。
+      operationId: createAutoResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - crmAccountId
+                - name
+                - displayWeight
+                - trigger
+                - messageGroups
+              properties:
+                crmAccountId:
+                  type: string
+                  minLength: 1
+                  description: 作成先のCRMアカウントID
+                  example: "01HQZW1234567890ABCDEFGHIJ"
+                name:
+                  $ref: '#/components/schemas/AutoResponseName'
+                intervalSeconds:
+                  $ref: '#/components/schemas/AutoResponseIntervalSeconds'
+                displayWeight:
+                  $ref: '#/components/schemas/AutoResponseDisplayWeight'
+                availableFrom:
+                  $ref: '#/components/schemas/AutoResponseAvailableFrom'
+                availableUntil:
+                  $ref: '#/components/schemas/AutoResponseAvailableUntil'
+                trigger:
+                  type: object
+                  required:
+                    - keywords
+                    - lineUserPostbackActionTagRuleIds
+                  properties:
+                    keywords:
+                      $ref: '#/components/schemas/AutoResponseKeywords'
+                    lineUserPostbackActionTagRuleIds:
+                      $ref: '#/components/schemas/AutoResponsePostbackRuleIds'
+                messageGroups:
+                  $ref: '#/components/schemas/AutoResponseMessageGroupsInput'
+            examples:
+              keywordResponse:
+                summary: キーワードに応答する
+                value:
+                  crmAccountId: "01HQZW1234567890ABCDEFGHIJ"
+                  name: "営業時間の案内"
+                  displayWeight: 1
+                  trigger:
+                    keywords: ["営業時間"]
+                    lineUserPostbackActionTagRuleIds: []
+                  messageGroups:
+                    - messages:
+                        - messageType: "TEXT"
+                          messageJson:
+                            type: "text"
+                            text: "営業時間は10時〜19時です。"
+              taggedResponses:
+                summary: タグごとに応答を分ける
+                value:
+                  crmAccountId: "01HQZW1234567890ABCDEFGHIJ"
+                  name: "キャンペーンの案内"
+                  intervalSeconds: 2
+                  displayWeight: 1
+                  availableFrom: "2026-12-01T00:00:00+09:00"
+                  availableUntil: "2026-12-31T23:59:59+09:00"
+                  trigger:
+                    keywords: ["キャンペーン"]
+                    lineUserPostbackActionTagRuleIds: ["01HQZR1234567890ABCDEFGHIJ"]
+                  messageGroups:
+                    - tags: ["01HQZT1234567890ABCDEFGHIJ", "VIP"]
+                      messages:
+                        - messageType: "TEXT"
+                          messageJson:
+                            type: "text"
+                            text: "VIP会員さま限定のご案内です。"
+                        - messageType: "SURVEY"
+                          surveyId: "01HQZS1234567890ABCDEFGHIJ"
+                    - messages:
+                        - messageType: "TEXT"
+                          messageJson:
+                            type: "text"
+                            text: "キャンペーン実施中です。"
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: 作成した応答メッセージのID
+                        example: "01HR0B1234567890ABCDEFGHIJ"
+        '400':
+          $ref: '#/components/responses/AutoResponseInvalidBody'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '401':
+          $ref: '#/components/responses/AutoResponseUnauthorized'
+        '403':
+          $ref: '#/components/responses/AutoResponseInvalidCrmAccount'
+        '500':
+          $ref: '#/components/responses/AutoResponseValidationUnavailable'
+      security:
+        - ApiKeyAuth: []
+
+  /auto-responses/{autoResponseId}:
+    parameters:
+      - name: autoResponseId
+        in: path
+        required: true
+        schema:
+          type: string
+          description: 応答メッセージのID
+        example: "01HR0B1234567890ABCDEFGHIJ"
+    get:
+      summary: 応答メッセージの詳細を取得
+      description: |
+        応答メッセージ1件を、応答設定（`messageGroups`）を含めて取得します。
+
+        `messageGroups`は配信時に評価される順（先頭から順にタグ条件を評価し、最初に一致した応答設定を使う）で返ります。
+        APIキーに紐づかないアカウントの応答メッセージIDと、存在しない・削除済みのIDは、どちらも404になります。
+      operationId: getAutoResponse
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/AutoResponseDetail'
+        '401':
+          $ref: '#/components/responses/AutoResponseUnauthorized'
+        '404':
+          $ref: '#/components/responses/AutoResponseNotFound'
+      security:
+        - ApiKeyAuth: []
+    patch:
+      summary: 応答メッセージを編集
+      description: |
+        応答メッセージを編集します。変えたい項目だけを指定してください。省略した項目は今の値のまま残ります。
+
+        - `intervalSeconds` / `availableFrom` / `availableUntil`は、`null`を指定すると設定を消します
+        - `trigger.keywords`と`trigger.lineUserPostbackActionTagRuleIds`は別々に置き換えられます（一方だけ指定すると、もう一方は今の値のまま残ります）
+        - `messageGroups`を指定すると、応答設定を**丸ごと置き換えます**。指定しなかった既存の応答設定は消えるため、一部だけ直すときは詳細取得で今の内容を取得し、手を加えてから全体を指定してください
+        - `messageGroups`を省略すると、既存の応答設定はそのまま残ります
+        - 応答メッセージが属するCRMアカウントは変更できません（`crmAccountId`を指定しても無視します）
+
+        入力チェックは作成（`POST /auto-responses`）と同じです。編集後に`trigger`のキーワードとポストバック条件の両方が空になる場合も400になります。
+        `messageGroups`を指定したときは、送っていない項目も含めた編集後の内容全体をチェックします。LINE連携情報が未登録のCRMアカウントでは、`messageGroups`を指定すると400 `LINE account configuration not found`になります。
+
+        APIキーに紐づかないアカウントの応答メッセージIDと、存在しない・削除済みのIDは、どちらも404になります。
+      operationId: updateAutoResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  $ref: '#/components/schemas/AutoResponseName'
+                intervalSeconds:
+                  $ref: '#/components/schemas/AutoResponseIntervalSeconds'
+                displayWeight:
+                  $ref: '#/components/schemas/AutoResponseDisplayWeight'
+                availableFrom:
+                  $ref: '#/components/schemas/AutoResponseAvailableFrom'
+                availableUntil:
+                  $ref: '#/components/schemas/AutoResponseAvailableUntil'
+                trigger:
+                  type: object
+                  properties:
+                    keywords:
+                      $ref: '#/components/schemas/AutoResponseKeywords'
+                    lineUserPostbackActionTagRuleIds:
+                      $ref: '#/components/schemas/AutoResponsePostbackRuleIds'
+                messageGroups:
+                  $ref: '#/components/schemas/AutoResponseMessageGroupsInput'
+            examples:
+              renameOnly:
+                summary: 名前と応答期間だけを変える
+                value:
+                  name: "営業時間の案内（年末年始）"
+                  availableUntil: "2027-01-05T00:00:00+09:00"
+              replaceKeywords:
+                summary: キーワードだけを置き換える
+                value:
+                  trigger:
+                    keywords: ["営業時間", "何時まで"]
+              replaceMessageGroups:
+                summary: 応答設定を置き換える
+                value:
+                  messageGroups:
+                    - messages:
+                        - messageType: "TEXT"
+                          messageJson:
+                            type: "text"
+                            text: "年末年始は休業します。"
+      responses:
+        '200':
+          description: 編集成功。編集後の内容を詳細取得と同じ形で返します
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/AutoResponseDetail'
+        '400':
+          $ref: '#/components/responses/AutoResponseInvalidBody'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '401':
+          $ref: '#/components/responses/AutoResponseUnauthorized'
+        '404':
+          $ref: '#/components/responses/AutoResponseNotFound'
+        '500':
+          $ref: '#/components/responses/AutoResponseValidationUnavailable'
+      security:
+        - ApiKeyAuth: []
+
 components:
   responses:
     PayloadTooLarge:
@@ -1595,6 +1955,312 @@ components:
               statusCode:
                 type: integer
                 example: 415
+    AutoResponseUnauthorized:
+      description: 認証エラー（APIキーが未指定 / 無効）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Unauthorized"
+            message: "Invalid API Key"
+            statusCode: 401
+    AutoResponseInvalidCrmAccount:
+      description: APIキーに紐づかないcrmAccountIdを指定
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Forbidden"
+            message: "Invalid crmAccountId"
+            statusCode: 403
+    AutoResponseNotFound:
+      description: 応答メッセージが見つからない（存在しない・削除済み・APIキーに紐づかないアカウントのID）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Not Found"
+            message: "Auto response not found"
+            statusCode: 404
+    AutoResponseInvalidBody:
+      description: |
+        不正なリクエスト
+
+        入力チェックに違反した場合は`message`が`Invalid request body`になり、`details`にどの項目が悪いかが返ります。
+        `details[].path`は`$input.`で始まるリクエストボディ内の位置です（例: `$input.messageGroups[0].tags`）。
+
+        LINE連携情報が未登録のCRMアカウントの場合は`message`が`LINE account configuration not found`になります。
+        リクエストボディがJSONとして解釈できない場合も、`message`が`Invalid request body`の400を返します（この場合`details`は返りません）。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  details:
+                    type: array
+                    description: 入力チェックの指摘（入力チェックに違反した場合のみ）
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: 指摘のあった項目の位置
+                          example: "$input.messageGroups[0].tags"
+                        message:
+                          type: string
+                          description: 指摘の内容
+                          example: "タグ \"VIP\" が見つかりません（IDまたは名前で指定可能）"
+          example:
+            success: false
+            error: "Bad Request"
+            message: "Invalid request body"
+            statusCode: 400
+            details:
+              - path: "$input.messageGroups[0].tags"
+                message: "タグ \"VIP\" が見つかりません（IDまたは名前で指定可能）"
+    AutoResponseValidationUnavailable:
+      description: |
+        メッセージ形式のチェックに失敗（LINE Messaging APIの一時的な障害など）。応答メッセージは作成・編集されていません。時間をおいて再度お試しください
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Internal Server Error"
+            message: "Failed to validate messages"
+            statusCode: 500
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        message:
+          type: string
+        statusCode:
+          type: integer
+    AutoResponseName:
+      type: string
+      minLength: 1
+      description: 応答メッセージ名
+      example: "営業時間の案内"
+    AutoResponseIntervalSeconds:
+      type: integer
+      nullable: true
+      minimum: 1
+      maximum: 5
+      description: |
+        メッセージの送信間隔（秒）。1〜5。
+        指定すると1通目を返信した後、2通目以降をこの間隔で送ります。未設定（`null`）の場合はまとめて返信します
+      example: null
+    AutoResponseDisplayWeight:
+      type: integer
+      minimum: 0
+      description: |
+        比率。条件に一致する応答メッセージが複数あるとき、この値に比例した確率で1件を選びます。0の応答メッセージは応答しません
+      example: 1
+    AutoResponseAvailableFrom:
+      type: string
+      format: date-time
+      nullable: true
+      description: 応答開始日時（ISO 8601形式）。この日時以降だけ応答します。`null`は制限なし
+      example: "2026-12-01T00:00:00+09:00"
+    AutoResponseAvailableUntil:
+      type: string
+      format: date-time
+      nullable: true
+      description: 応答終了日時（ISO 8601形式）。この日時より前だけ応答します。`null`は制限なし
+      example: "2026-12-31T23:59:59+09:00"
+    AutoResponseKeywords:
+      type: array
+      maxItems: 10
+      uniqueItems: true
+      description: キーワード（最大10個、重複不可）。LINEユーザーが送ったテキストがいずれかと完全一致すると応答します
+      items:
+        type: string
+        minLength: 1
+      example: ["営業時間"]
+    AutoResponsePostbackRuleIds:
+      type: array
+      description: ポストバック条件（ポストバックアクションのルール）のID。いずれか1つに一致すると応答します
+      items:
+        type: string
+        minLength: 1
+      example: []
+    AutoResponseMessageGroupsInput:
+      type: array
+      minItems: 1
+      maxItems: 100
+      description: |
+        応答設定（1〜100個）。配列の先頭から順にタグ条件を評価し、最初に一致した応答設定のメッセージを返します。
+        タグを指定しない応答設定はすべてのLINEユーザーに一致するため、末尾に置いてください
+      items:
+        type: object
+        required:
+          - messages
+        properties:
+          tags:
+            type: array
+            nullable: true
+            maxItems: 50
+            description: |
+              応答の条件にするタグ（最大50個）。LINEユーザーが指定したタグをすべて持つ場合に一致します（AND条件）。
+              タグIDまたはタグ名で指定します。26文字の英数字はまずタグIDとして引き、見つからなければタグ名として引きます
+            items:
+              type: string
+            example: ["01HQZT1234567890ABCDEFGHIJ", "VIP"]
+          messages:
+            type: array
+            minItems: 1
+            maxItems: 5
+            description: 返信するメッセージ（アンケートを含めて1〜5個）。配列の順に送ります
+            items:
+              $ref: '#/components/schemas/AutoResponseMessage'
+    AutoResponseMessage:
+      type: object
+      required:
+        - messageType
+      properties:
+        messageType:
+          type: string
+          enum: [TEXT, STICKER, IMAGE, VIDEO, AUDIO, FILE, LOCATION, IMAGEMAP, TEMPLATE, FLEX, SURVEY]
+          description: |
+            メッセージタイプ。アンケートは`SURVEY`です。
+            `SURVEY`以外は、`messageJson.type`を大文字にした値と一致させてください（例: `TEXT`には`type: "text"`、`FLEX`には`type: "flex"`）
+          example: "TEXT"
+        messageJson:
+          type: object
+          nullable: true
+          description: |
+            LINE Messaging APIのメッセージオブジェクト。`SURVEY`以外では必須で、`SURVEY`では指定できません。
+            画像・動画・音声などは、公開済みのファイルのURLを指定してください（このAPIでファイルはアップロードできません）。
+            絵文字（`emojis`）は20個まで、`sender.name`は20文字までです
+          example:
+            type: "text"
+            text: "営業時間は10時〜19時です。"
+        surveyId:
+          type: string
+          nullable: true
+          description: アンケートのID。`messageType`が`SURVEY`のときは必須で、それ以外では指定できません
+          example: null
+    AutoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 応答メッセージのID
+          example: "01HR0B1234567890ABCDEFGHIJ"
+        crmAccountId:
+          type: string
+          description: 応答メッセージが属するCRMアカウントのID
+          example: "01HQZW1234567890ABCDEFGHIJ"
+        name:
+          type: string
+          description: 応答メッセージ名
+          example: "営業時間の案内"
+        trigger:
+          type: object
+          properties:
+            keywords:
+              type: array
+              description: キーワード
+              items:
+                type: string
+              example: ["営業時間"]
+            lineUserPostbackActionTagRuleIds:
+              type: array
+              description: ポストバック条件のID
+              items:
+                type: string
+              example: []
+        intervalSeconds:
+          type: integer
+          nullable: true
+          description: メッセージの送信間隔（秒）
+          example: null
+        displayWeight:
+          type: integer
+          description: 比率
+          example: 1
+        availableFrom:
+          type: string
+          format: date-time
+          nullable: true
+          description: 応答開始日時
+          example: null
+        availableUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: 応答終了日時
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          description: 作成日時（ISO 8601形式）
+          example: "2026-11-05T01:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時（ISO 8601形式）
+          example: "2026-11-05T01:00:00.000Z"
+    AutoResponseDetail:
+      allOf:
+        - $ref: '#/components/schemas/AutoResponse'
+        - type: object
+          properties:
+            messageGroups:
+              type: array
+              description: 応答設定（配信時に評価される順）
+              items:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    description: 応答の条件にするタグ。条件がない場合は空配列です
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "01HQZT1234567890ABCDEFGHIJ"
+                        name:
+                          type: string
+                          example: "VIP"
+                  messages:
+                    type: array
+                    description: 返信するメッセージ（送る順）
+                    items:
+                      type: object
+                      properties:
+                        messageType:
+                          type: string
+                          enum: [TEXT, STICKER, IMAGE, VIDEO, AUDIO, FILE, LOCATION, IMAGEMAP, TEMPLATE, FLEX, SURVEY]
+                          example: "TEXT"
+                        messageJson:
+                          type: object
+                          nullable: true
+                          description: LINE Messaging APIのメッセージオブジェクト（`SURVEY`の場合は`null`）
+                          example:
+                            type: "text"
+                            text: "営業時間は10時〜19時です。"
+                        surveyId:
+                          type: string
+                          nullable: true
+                          description: アンケートのID（`SURVEY`以外は`null`）
+                          example: null
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
