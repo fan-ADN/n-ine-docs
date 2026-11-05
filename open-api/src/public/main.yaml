@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: N-INE Public API
-  version: 1.0.10
+  version: 1.0.11
   description: N-INE クライアント向け公開API
 servers:
   - url: https://api.app.n-ine.com/v1
@@ -665,7 +665,31 @@ paths:
   /genres/{miniappId}:
     get:
       summary: ミニアプリに紐づくジャンル一覧を取得
-      description: 指定したミニアプリIDに紐づくジャンルグループとジャンルの階層構造を取得します。
+      description: |
+        指定したミニアプリIDに紐づくジャンルグループとジャンルの階層構造を取得します。
+
+        **リマインダーの通知がONの利用者に配信する場合:**
+        利用タグ（`usageTagId`）でミニアプリの利用者に絞り込み、対象ジャンルの通知OFFタグ（`tagId`）で除外します。
+        初期値のまま通知がONの利用者も対象です。初期設定が必要なミニアプリでは、初期設定を完了した利用者、
+        または既存の通知設定により初期設定が不要な利用者が対象となり、初期設定が必要なまま未完了の利用者は対象外です。
+        初期設定が不要なミニアプリでは、起動した利用者が対象です。
+
+        利用開始前に、利用タグの設定と既存利用者の移行が完了していることをサービス担当者へ確認してください。
+        `usageTagId` が返されるだけでは移行完了を判断できません。
+        `usageTagId` または対象ジャンルの `tagId` が `null` の場合、この方法での配信は行わず、サービス担当者へ確認してください。
+
+        対象ジャンルを1件指定する場合、`POST /multicasts` に次の配信条件を設定します。
+        CRMアカウントID、メッセージ、配信予約日時などは、同APIの仕様に従って指定してください。
+
+        - `isBroadcast`: `false`
+        - `includeTagIds`: `usageTagId` のみを含む配列
+        - `excludeTagIds`: 対象ジャンルの `tagId` のみを含む配列
+        - `targetingSettings.includeTargetType`: `TAGS`
+        - `targetingSettings.includeTagConditionType`: `AND`
+        - `targetingSettings.excludeTagConditionType`: `OR`
+
+        利用タグはサービスが自動的に付与します。管理画面・一括操作・APIで利用者に付け外ししたり、タグ自体を削除したりしないでください。
+        配信対象の絞り込み専用のため、タグ付与をきっかけにするステップ配信やリッチメニューの切り替え条件には使用しないでください。
       operationId: getGenres
       parameters:
         - name: miniappId
@@ -682,10 +706,16 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [success, usageTagId, genreGroups]
                 properties:
                   success:
                     type: boolean
                     example: true
+                  usageTagId:
+                    type: string
+                    nullable: true
+                    description: リマインダーの利用者に配信対象を絞り込むためのタグID。リマインダー以外のミニアプリ、未設定、または有効な利用タグがない場合はnull。値が返されても既存利用者の移行完了を示すものではありません。
+                    example: "01HQZUSER1234567890ABCDEFGH"
                   genreGroups:
                     type: array
                     description: ジャンルグループとその配下のジャンルのリスト
@@ -730,7 +760,7 @@ paths:
                               tagId:
                                 type: string
                                 nullable: true
-                                description: 紐づくタグID
+                                description: 紐づくタグID。リマインダーでは通知OFFタグを表し、通知がONの利用者への配信時にexcludeTagIdsへ指定します。
                                 example: "01HR001234567890ABCDEFGHIJ"
                               name:
                                 type: string
